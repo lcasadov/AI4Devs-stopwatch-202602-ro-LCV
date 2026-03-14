@@ -1,13 +1,182 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="html-root">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Timer and Countdown</title>
-<link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">⏱️ Tick Tock Countdown!</title>
+
+  <!-- UnoCSS Runtime CDN — generates utility CSS on the fly, no build step -->
+  <script>
+    window.__unocss = {
+      safelist: [
+        /* field error states (toggled dynamically by JS) */
+        'border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50',
+        'border-gray-200',
+        /* display states */
+        'text-red-500', 'animate-pulse', 'text-gray-800',
+        /* log entry colours */
+        'text-blue-500', 'text-yellow-500',
+      ]
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/uno.global.js"></script>
+
+  <style>
+    /* ── Cross-browser: hide number-input spinners for a cleaner look ── */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  </style>
 </head>
-<body>
-<h1>Timer and Countdown</h1>
-<script src="script.js"></script>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900
+             flex items-center justify-center p-4 font-sans">
+
+  <!-- ── Language Switcher (fixed, top-right) ── -->
+  <div class="fixed top-4 right-4 flex gap-2 z-50
+              bg-white/10 backdrop-blur-sm rounded-2xl px-3 py-2 shadow-lg">
+    <button id="btn-lang-en"
+            title="English"
+            aria-label="Switch to English"
+            class="text-2xl cursor-pointer transition-all duration-200 hover:scale-110 select-none">
+      🇬🇧
+    </button>
+    <button id="btn-lang-es"
+            title="Español"
+            aria-label="Cambiar a Español"
+            class="text-2xl cursor-pointer transition-all duration-200 hover:scale-110 select-none">
+      🇪🇸
+    </button>
+  </div>
+
+  <!-- ── Main Card ── -->
+  <main class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-auto my-8">
+
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <h1 id="app-title"
+          class="text-3xl font-extrabold text-gray-800 mb-3">
+        ⏱️ Tick Tock Countdown!
+      </h1>
+      <p id="app-description"
+         class="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">
+        The clock is ticking… Set your timer and watch the seconds vanish into the void! ⚡
+      </p>
+    </header>
+
+    <!-- Input Fields Row -->
+    <div class="flex items-end gap-2 mb-3">
+
+      <!-- Hours -->
+      <div class="flex flex-col items-center flex-1 min-w-0">
+        <label id="label-hours" for="input-hours"
+               class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          Hours
+        </label>
+        <input id="input-hours"
+               type="number" min="0" max="99"
+               placeholder="00" autocomplete="off"
+               class="w-full text-center text-3xl font-bold rounded-xl border-2 border-gray-200
+                      py-3 px-1 outline-none focus:border-indigo-400 transition-all duration-200 bg-white" />
+      </div>
+
+      <span class="text-3xl font-bold text-gray-300 pb-3 flex-shrink-0">:</span>
+
+      <!-- Minutes -->
+      <div class="flex flex-col items-center flex-1 min-w-0">
+        <label id="label-minutes" for="input-minutes"
+               class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          Min
+        </label>
+        <input id="input-minutes"
+               type="number" min="0" max="59"
+               placeholder="00" autocomplete="off"
+               class="w-full text-center text-3xl font-bold rounded-xl border-2 border-gray-200
+                      py-3 px-1 outline-none focus:border-indigo-400 transition-all duration-200 bg-white" />
+      </div>
+
+      <span class="text-3xl font-bold text-gray-300 pb-3 flex-shrink-0">:</span>
+
+      <!-- Seconds -->
+      <div class="flex flex-col items-center flex-1 min-w-0">
+        <label id="label-seconds" for="input-seconds"
+               class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+          Sec
+        </label>
+        <input id="input-seconds"
+               type="number" min="0" max="59"
+               placeholder="00" autocomplete="off"
+               class="w-full text-center text-3xl font-bold rounded-xl border-2 border-gray-200
+                      py-3 px-1 outline-none focus:border-indigo-400 transition-all duration-200 bg-white" />
+      </div>
+    </div>
+
+    <!-- Error Alert -->
+    <div id="error-message"
+         role="alert"
+         class="hidden text-red-600 text-sm text-center mb-4 px-4 py-3
+                bg-red-50 rounded-xl border border-red-200">
+    </div>
+
+    <!-- Counter Display — styled after reference image -->
+    <div class="bg-indigo-50 border-4 border-gray-800 rounded-2xl
+                px-4 py-6 mb-6 text-center shadow-inner">
+      <div id="display-time"
+           class="text-6xl sm:text-7xl font-bold font-mono text-gray-800
+                  tracking-widest select-none tabular-nums">
+        00:00:00
+      </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="flex gap-3 mb-6">
+      <!-- Start: disabled until valid input -->
+      <button id="btn-start" disabled
+              class="flex-1 py-3 rounded-xl text-white font-bold text-base bg-green-500
+                     enabled:hover:bg-green-600 enabled:active:scale-95
+                     disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
+                     transition-all duration-200">
+        Start
+      </button>
+      <!-- Stop: orange -->
+      <button id="btn-stop"
+              class="flex-1 py-3 rounded-xl text-white font-bold text-base bg-orange-500
+                     hover:bg-orange-600 active:scale-95 transition-all duration-200">
+        Stop
+      </button>
+      <!-- Reset: red -->
+      <button id="btn-reset"
+              class="flex-1 py-3 rounded-xl text-white font-bold text-base bg-red-500
+                     hover:bg-red-600 active:scale-95 transition-all duration-200">
+        Reset
+      </button>
+    </div>
+
+    <!-- Logs Panel -->
+    <section aria-label="Application logs">
+      <div class="flex items-center justify-between mb-2">
+        <button id="btn-toggle-logs"
+                class="text-sm text-gray-400 hover:text-gray-700 font-medium
+                       cursor-pointer transition-colors duration-200">
+          📋 Show Logs
+        </button>
+        <button id="btn-download-logs"
+                class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold
+                       px-3 py-1.5 rounded-lg cursor-pointer transition-colors duration-200">
+          ⬇ Download
+        </button>
+      </div>
+      <div id="logs-panel"
+           class="hidden bg-gray-50 rounded-xl px-4 py-3 max-h-48 overflow-y-auto
+                  border border-gray-100">
+        <div id="logs-content"
+             class="text-xs font-mono text-gray-500 space-y-1">
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
